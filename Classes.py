@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+# домашнє завдання Давидченко
+# pull request
+>>>>>>> bc95182 (added implementation)
 import math
 
 class ProductError(Exception):
