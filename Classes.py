@@ -1,5 +1,5 @@
 # домашнє завдання Давидченко
-# pull request
+# pull request_1
 import math
 
 class ProductError(Exception):
