@@ -1,4 +1,3 @@
-# домашнє завдання Давидченко 
 import math
 
 class ProductError(Exception):
