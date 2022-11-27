@@ -9,6 +9,7 @@ class ProductError(Exception):
     def __str__(self):
         return self.message
 
+
 class Product:
     def __init__(self, name: str, price: float) -> None:
         """
@@ -82,6 +83,30 @@ class ShoppingCart:
         """
         return len(self.products)
 
+    def get_product_index(self, product: Product) -> int:
+        """
+        метод повертає індекс продукту Product в корзині.
+        якщо продукту в корзині немає, то повертається -1
+        :param product: екземпляр класу Product
+        :return: індекс продукту
+        """
+        if product not in self.products:
+            return -1
+        else:
+            for i, product in enumerate(self.products):
+                if product == product:
+                    return i
+
+    def get_quantity(self, product: Product) -> Union[int, float]:
+        """
+        метод повертає кількість продукту product у корзині
+        якщо такого продукту у корзині немає, то повертається нуль
+        :param product: екземпляр класу  Product
+        :return: кількість продукту Union[int, float]
+        """
+        i = self.get_product_index(product)
+        return self.quantity[i] if i > -1 else 0
+
     def add(self, product_inst: Product, quantity) -> None:
         """
         метод додає продукт у кошик
@@ -89,14 +114,13 @@ class ShoppingCart:
         :param quantity: кількість продукту
         :return:
         """
+        i = self.get_product_index(product_inst)
 
-        if product_inst not in self.products:
+        if i == -1:
             self.products.append(product_inst)
             self.quantity.append(quantity)
         else:
-            for i, product in enumerate(self.products):
-                if product == product_inst:
-                    self.quantity[i] += quantity
+            self.quantity[i] += quantity
 
     def pop(self, index: int) -> None:
         """
@@ -219,3 +243,8 @@ if __name__ == '__main__':
     tomato_disc = ProductDiscont("milk", 14.5, discont=10, rules=8)
     cart.add(tomato_disc, 9)
     print(cart)
+    print('кільксть продукту -', cart.get_quantity(tomato))
+    print('кільксть продукту -', cart.get_quantity(tomato_disc))
+    cart.rm(tomato, 0.5)
+    print('кільксть продукту -', cart.get_quantity(tomato))
+    print('кільксть продукту -', cart.get_quantity(tomato_disc))
