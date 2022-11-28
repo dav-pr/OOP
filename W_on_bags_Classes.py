@@ -1,5 +1,21 @@
 from typing import Union
+import logging
 
+def debug_func(func):
+    """
+    декоратор для logger
+    :param func:
+    :return:
+    """
+
+    def wrapper(*args):
+        logger.debug('виклик функції {0}'.format(func.__name__))
+        for arg in args:
+
+            logger.debug(' функції передані аргументи %s', arg)
+        logger.debug('результат виконання функції {0}  = {1}'.format(func.__name__, func(*args)))
+
+    return wrapper
 
 class ProductError(Exception):
 
@@ -25,7 +41,7 @@ class Product:
         метод здійснює валідацію значень екземпляру класа
         :return:
         """
-        return True if self.name and self.price > 0 else False
+        return  self.name and self.price > 0
 
     def total_price(self, quantity: float) -> float:
         """
@@ -39,14 +55,13 @@ class Product:
             raise ProductError('none validate object, product name {0}'.format(self.name))
 
     def __eq__(self, other) -> bool:
-
-        return True if isinstance(other, Product) and self.name == other.name and self.price == other.price else False
-
-    def __ne__(self, other) -> bool:
         if isinstance(other, Product):
-            return True if self.name != other.name or self.price != other.price else False
+            return self.name == other.name and self.price == other.price
         else:
-            raise ProductError('none copmare object, type mismatch')
+            return False
+
+    # def __ne__(self, other) -> bool:
+    #     return not self.__eq__(other)
 
     def total_price_str(self, quantity) -> str:
         """
@@ -54,9 +69,7 @@ class Product:
         :param quantity:
         :return: str - формулf розрахунку вартості
         """
-
-        el_of_str = [self.name, quantity, self.price, self.total_price(quantity)]
-        return '\'{0}\' {1} * {2} = {3}'.format(*el_of_str)
+        return f'\'{self.name}\' {quantity} * {self.price} = {self.total_price(quantity)}'
 
 
 class ShoppingCart:
@@ -64,6 +77,7 @@ class ShoppingCart:
     клас "Корзина з товарами"
     """
 
+    #@debug_func
     def __init__(self):
 
         self.products: list[Product] = []
@@ -74,7 +88,7 @@ class ShoppingCart:
         для майбутнього використання
         :return:
         """
-        return True if not len(self.products) else False
+        return not self.products
 
     def get_num_goods(self) -> int:
         """
@@ -83,19 +97,17 @@ class ShoppingCart:
         """
         return len(self.products)
 
-    def get_product_index(self, product: Product) -> int:
-        """
-        метод повертає індекс продукту Product в корзині.
-        якщо продукту в корзині немає, то повертається -1
-        :param product: екземпляр класу Product
-        :return: індекс продукту
-        """
-        if product not in self.products:
-            return -1
-        else:
-            for i, product in enumerate(self.products):
-                if product == product:
-                    return i
+    # def get_product_index(self, product: Product) -> int:
+    #     """
+    #     метод повертає індекс продукту Product в корзині.
+    #     якщо продукту в корзині немає, то повертається -1
+    #     :param product: екземпляр класу Product
+    #     :return: індекс продукту
+    #     """
+    #     try:
+    #         return self.products.index(product)
+    #     except ValueError:
+    #         raise ProductError(f'продукту немає у списку, product name {product}')
 
     def get_quantity(self, product: Product) -> Union[int, float]:
         """
@@ -104,9 +116,13 @@ class ShoppingCart:
         :param product: екземпляр класу  Product
         :return: кількість продукту Union[int, float]
         """
-        i = self.get_product_index(product)
-        return self.quantity[i] if i > -1 else 0
+        try:
+            return self.quantity[self.products.index(product)]
+        except ValueError:
+            raise ProductError(f'продукту немає у списку, product name {product}')
 
+
+    #@debug_func
     def add(self, product_inst: Product, quantity) -> None:
         """
         метод додає продукт у кошик
@@ -114,25 +130,29 @@ class ShoppingCart:
         :param quantity: кількість продукту
         :return:
         """
-        i = self.get_product_index(product_inst)
 
-        if i == -1:
+        if product_inst not in self.products:
             self.products.append(product_inst)
             self.quantity.append(quantity)
         else:
-            self.quantity[i] += quantity
+            self.quantity[self.products.index(product_inst)] += quantity
 
-    def pop(self, index: int) -> None:
+        idx = self.products.index(product_inst)
+        if self.quantity[idx] <= 0:
+            self.pop(product_inst)
+
+    def pop(self, product: Product) -> None:
         """
         видаляє із списків self.products та self.quantity
         елементи з індексом index
         :param index: індекс елементу
         :return: None
         """
-        self.products.pop(index)
-        self.quantity.pop(index)
+        i = self.products.index(product)
+        self.products.pop(i)
+        self.quantity.pop(i)
 
-    def rm(self, product_inst: Product, quantity=0) -> None:
+    def sub(self, product_inst: Product, quantity=0) -> None:
         """
         зменьшує кількість товару Product у корзина на кількість quantity
         Якщо quantity = 0, то видаляеться увест товар Product із корзини
@@ -141,16 +161,9 @@ class ShoppingCart:
         :param quantity:
         :return:
         """
-        if product_inst in self.products:
-            for i, product in enumerate(self.products):
-                if product == product_inst:
-                    if quantity == 0:
-                        self.pop(i)
-                    else:
-                        if self.quantity[i] < quantity:
-                            self.pop(i)
-                        else:
-                            self.quantity[i] -= quantity
+        quantity = - abs(quantity)
+        return self.add(product_inst, quantity)
+
 
     def total_price(self) -> float:
         """
@@ -209,21 +222,28 @@ class ProductDiscont(Product):
         return discont
 
     def total_price(self, quantity: Union[int, float]) -> Union[int, float]:
-        return super().total_price(quantity) - self.discont_count(quantity)
+        return round(super().total_price(quantity) - self.discont_count(quantity),2)
 
     def total_price_str(self, quantity) -> str:
 
         res_str = []
-        el_of_str = [self.name, quantity, self.price, super().total_price(quantity)]
-        res_str.append('\'{0}\' {1} * {2} = {3}'.format(*el_of_str))
+        res_str.append(f'\'{self.name}\' {quantity} * {self.price} = {super().total_price(quantity)}')
         # якщо дісконт більше нуля, то відображаемо його у "квитанції"
         if self.discont_count(quantity) > 0:
-            res_str.append('discont -{0}'.format(self.discont_count(quantity)).rjust(len(res_str[0]), " "))
-            res_str.append('total {0}'.format(self.total_price(quantity)).rjust(len(res_str[0]), " "))
+            res_str.append(f'discont -{self.discont_count(quantity)}'.rjust(len(res_str[0]), " "))
+            res_str.append(f'total {self.total_price(quantity):>}'.rjust(len(res_str[0]), " "))
         return '\n'.join(res_str)
 
 
 if __name__ == '__main__':
+    # ini logger instance
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(filename='example.log', filemode='w', level=logging.DEBUG,
+                        format="%(asctime)s - [%(levelname)s] -  %(name)s - \
+    (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s",
+                        datefmt='%d.%m.%y %I:%M:%S %p')
+
+    logger.debug('start sript')
     tomato = Product('tomato', 34.50)
     tomato1 = Product('tomato', 34.51)
     mango = Product('mango', 60.50)
@@ -237,7 +257,7 @@ if __name__ == '__main__':
     print(cart)
     cart.add(mango, 3.6)
     print(cart)
-    cart.rm(tomato, 0.5)
+    cart.sub(tomato, 0.5)
     print(cart)
 
     tomato_disc = ProductDiscont("milk", 14.5, discont=10, rules=8)
@@ -245,6 +265,10 @@ if __name__ == '__main__':
     print(cart)
     print('кільксть продукту -', cart.get_quantity(tomato))
     print('кільксть продукту -', cart.get_quantity(tomato_disc))
-    cart.rm(tomato, 0.5)
+    cart.sub(tomato, 0.5)
     print('кільксть продукту -', cart.get_quantity(tomato))
     print('кільксть продукту -', cart.get_quantity(tomato_disc))
+    mango = Product(' ', 0)
+    print(mango!=tomato)
+    print(cart.is_empty())
+
