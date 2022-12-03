@@ -1,5 +1,6 @@
 """
-Errors Class for classes Product and Cart
+Errors Class
+for classes Product and Cart
 
 """
 
